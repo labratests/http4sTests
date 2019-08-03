@@ -25,7 +25,13 @@ class MyServer[F[_]:ConcurrentEffect: Timer](host: String, port: Int)(implicit F
   logger.info(s"Starting RDFShape on '$host:$port'")
 
   def routesService(blocker: Blocker): HttpRoutes[F] =
-    CORS(HelloService[F](blocker).routes)
+    CORS(
+      HelloService[F](blocker).routes <+>
+      UserService[F](blocker,UserRepoInMemory.fromMap(
+        Map("pepe" -> User("pepe",34)
+        )
+      )).routes
+    )
 
   def httpApp(blocker: Blocker): HttpApp[F] =
     routesService(blocker).orNotFound

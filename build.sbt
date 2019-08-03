@@ -45,7 +45,7 @@ lazy val scalaMacrosParadise = "org.scalamacros"      % "paradise"        % scal
 lazy val http4sTests = project
   .in(file("."))
   .enablePlugins(ScalaUnidocPlugin, SbtNativePackager, WindowsPlugin, JavaAppPackaging,SbtTwirl)
-  .disablePlugins(RevolverPlugin)
+//  .disablePlugins(RevolverPlugin)
   .settings(
     unidocProjectFilter in (ScalaUnidoc, unidoc) := inAnyProject -- inProjects(noDocProjects: _*),
     libraryDependencies ++= Seq(
@@ -56,6 +56,7 @@ lazy val http4sTests = project
       http4sBlazeClient,
       http4sCirce,
       http4sTwirl,
+      circeGeneric, 
       selenium,
       // webJars
       jquery,
@@ -64,7 +65,7 @@ lazy val http4sTests = project
     cancelable in Global      := true,
     fork                      := true,
 //    reStartArgs               := Seq("--server"),
-    parallelExecution in Test := false
+//    parallelExecution in Test := false
   ).settings(commonSettings, packagingSettings, publishSettings, ghPagesSettings, wixSettings)
 
 

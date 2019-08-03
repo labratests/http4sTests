@@ -10,17 +10,29 @@ import org.http4s.server.{Router, Server}
 import org.http4s.server.blaze.{BlazeBuilder, BlazeServerBuilder}
 import org.http4s.server.middleware.CORS
 import org.http4s.server.staticcontent.FileService.Config
+import io.circe._
+import io.circe.syntax._
 import scala.util.Properties.envOrNone
 import org.log4s.getLogger
 import cats.implicits._
 import cats.effect._
 import org.http4s.twirl._
 import es.weso._
+import fs2.Stream
+import io.circe.Json
 import org.http4s.server.staticcontent._
 
+import scala.concurrent.duration._
+import org.http4s.EntityEncoder
+import org.http4s.EntityDecoder
+import User.UserEncoder
 
-class HelloService[F[_]](blocker: Blocker)(implicit F: Effect[F], cs: ContextShift[F])
+
+class HelloService[F[_]](blocker: Blocker
+                        )(implicit F: Effect[F], cs: ContextShift[F], t: Timer[F])
   extends Http4sDsl[F] {
+
+//  implicit val userEcoder: EntityEncoder[F,Stream[F,User]] = ???
 
   def routes(implicit timer: Timer[F]): HttpRoutes[F] =
     Router[F](
@@ -32,19 +44,38 @@ class HelloService[F[_]](blocker: Blocker)(implicit F: Effect[F], cs: ContextShi
 
   def staticRoutes = resourceService[F](ResourceService.Config("/static", blocker))
 
-  def rootRoutes(implicit timer: Timer[F]): HttpRoutes[F] =
+  def dripString: Stream[F, String] =
+    Stream.awakeEvery[F](100.millis).map(_.toString)
+
+  def users: Stream[F, User] =
+    Stream.awakeEvery[F](100.millis).map(s =>
+      User("pepe" + s,s.toMinutes.toInt)
+    )
+
+  def asJsonArray(users: Stream[F,User]): Stream[F, String] =
+    Stream.emit("[") ++
+      users.map(_.asJson.noSpaces).intersperse(",") ++
+      Stream.emit("]")
+
+  def rootRoutes: HttpRoutes[F] =
     HttpRoutes.of[F] {
 
       case GET -> Root => Ok(s"Testing http4s")
 
-      case GET -> Root / "hi" =>
-        // Ok(html.index())
-        Ok("Hello")
+      case GET -> Root / "hi" / name =>
+        Ok(html.index(name))
+
+      case GET -> Root / "strings" =>
+        Ok(dripString)
+
+      case GET -> Root / "users" =>
+        Ok(asJsonArray(users))
+
     }
 
 }
 
 object HelloService {
- def apply[F[_]: Effect: ContextShift](blocker: Blocker): HelloService[F] =
+ def apply[F[_]: Effect: ContextShift: Timer](blocker: Blocker): HelloService[F] =
     new HelloService[F](blocker)
 }
