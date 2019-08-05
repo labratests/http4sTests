@@ -10,28 +10,39 @@ import org.http4s.server.{Router, Server}
 import org.http4s.server.blaze.{BlazeBuilder, BlazeServerBuilder}
 import org.http4s.server.middleware.CORS
 import org.http4s.server.staticcontent.FileService.Config
+
 import scala.util.Properties.envOrNone
 import org.log4s.getLogger
 import cats.implicits._
 import cats.effect._
 import org.http4s.twirl._
 import es.weso._
+import org.http4s.client.Client
+import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.client.middleware.FollowRedirect
 import org.http4s.server.staticcontent._
 
-class MyServer[F[_]:ConcurrentEffect: Timer](host: String, port: Int)(implicit F: Effect[F], cs: ContextShift[F]) {
+import scala.concurrent.ExecutionContext.global
+
+class MyServer[F[_]:ConcurrentEffect: Timer](host: String,
+                                             port: Int,
+                                            )(implicit F: Effect[F], cs: ContextShift[F]) {
 
   private val logger = getLogger
 
   logger.info(s"Starting RDFShape on '$host:$port'")
 
-  def routesService(blocker: Blocker): HttpRoutes[F] =
+  def routesService(blocker: Blocker): HttpRoutes[F] = {
+    println(s"Routes...")
     CORS(
-      HelloService[F](blocker).routes <+>
-      UserService[F](blocker,UserRepoInMemory.fromMap(
+      HelloService[F](blocker).routes  <+>
+/*      UserService[F](blocker,UserRepoInMemory.fromMap(
         Map("pepe" -> User("pepe",34)
         )
-      )).routes
+      )).routes <+> */
+      WikidataService[F](blocker).routes
     )
+  }
 
   def httpApp(blocker: Blocker): HttpApp[F] =
     routesService(blocker).orNotFound
@@ -49,9 +60,10 @@ class MyServer[F[_]:ConcurrentEffect: Timer](host: String, port: Int)(implicit F
 
 object MyServer extends IOApp {
   val ip = "0.0.0.0"
-  val port = envOrNone("PORT") map (_.toInt) getOrElse (8080)
+  val port = 8080
 
-  override def run(args: List[String]): IO[ExitCode]  =
-    new MyServer[IO](ip,port).resource.use(_ => IO.never).as(ExitCode.Success)
+  override def run(args: List[String]): IO[ExitCode]  = {
+      new MyServer[IO](ip, port).resource.use(_ => IO.never).as(ExitCode.Success)
+  }
 
 }

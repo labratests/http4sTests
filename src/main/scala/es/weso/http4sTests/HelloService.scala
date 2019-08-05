@@ -32,8 +32,6 @@ class HelloService[F[_]](blocker: Blocker
                         )(implicit F: Effect[F], cs: ContextShift[F], t: Timer[F])
   extends Http4sDsl[F] {
 
-//  implicit val userEcoder: EntityEncoder[F,Stream[F,User]] = ???
-
   def routes(implicit timer: Timer[F]): HttpRoutes[F] =
     Router[F](
       "" -> staticRoutes.combineK(rootRoutes)  // TODO: <+> could be used instead of combineK but if gives an error
@@ -57,7 +55,8 @@ class HelloService[F[_]](blocker: Blocker
       users.map(_.asJson.noSpaces).intersperse(",") ++
       Stream.emit("]")
 
-  def rootRoutes: HttpRoutes[F] =
+  def rootRoutes: HttpRoutes[F] = {
+    println(s"rootRoutes...")
     HttpRoutes.of[F] {
 
       case GET -> Root => Ok(s"Testing http4s")
@@ -72,6 +71,7 @@ class HelloService[F[_]](blocker: Blocker
         Ok(asJsonArray(users))
 
     }
+  }
 
 }
 
